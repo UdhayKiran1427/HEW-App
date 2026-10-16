@@ -1,0 +1,9 @@
+{
+  "name": "dailykit-root",
+  "version": "1.0.0",
+  "description": "DailyKit Root Project",
+  "scripts": {
+    "postinstall": "cd backend && npm install",
+    "start": "node backend/src/index.js"
+  }
+}
