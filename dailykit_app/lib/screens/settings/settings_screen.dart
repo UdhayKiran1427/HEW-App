@@ -127,6 +127,25 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+
+          // About App Card
+          Card(
+            child: ListTile(
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/app_logo.png',
+                  width: 36,
+                  height: 36,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              title: const Text('HEW', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Habits • Expenses • Where Kept • Renewals\nVersion 1.0.0'),
+              isThreeLine: true,
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Logout Button

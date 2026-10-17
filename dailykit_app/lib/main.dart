@@ -41,7 +41,7 @@ class DailyKitApp extends StatelessWidget {
     final authProvider = context.watch<AuthProvider>();
 
     return MaterialApp(
-      title: 'DailyKit',
+      title: 'HEW',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
