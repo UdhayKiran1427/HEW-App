@@ -146,6 +146,17 @@ class _HabitsScreenState extends State<HabitsScreen> {
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_month_outlined, size: 14, color: Colors.grey.shade500),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Tap any habit to view its Month-wise Calendar & Heatmap',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),

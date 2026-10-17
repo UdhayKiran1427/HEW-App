@@ -18,6 +18,7 @@ class HabitDetailScreen extends StatefulWidget {
 class _HabitDetailScreenState extends State<HabitDetailScreen> {
   late HabitModel _habit;
   bool _isLoading = true;
+  DateTime _selectedMonth = DateTime.now();
 
   @override
   void initState() {
@@ -111,7 +112,16 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                   CalendarHeatmap(
                     completedDates: _habit.logs,
                     habitColor: habitColor,
-                    targetMonth: DateTime.now(),
+                    targetMonth: _selectedMonth,
+                    onMonthChanged: (newMonth) {
+                      setState(() {
+                        _selectedMonth = newMonth;
+                      });
+                    },
+                    onDateTap: (date) async {
+                      await context.read<HabitProvider>().toggleCheckIn(_habit.id, date: date);
+                      _loadFullDetails();
+                    },
                   ),
                   const SizedBox(height: 16),
 
