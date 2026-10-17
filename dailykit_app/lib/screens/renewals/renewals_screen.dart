@@ -4,6 +4,8 @@ import '../../core/constants/app_colors.dart';
 import '../../models/renewal_model.dart';
 import '../../providers/renewal_provider.dart';
 import '../../widgets/renewal_card.dart';
+import '../../widgets/voice_assistant_sheet.dart';
+import '../../core/utils/hinglish_voice_parser.dart';
 import 'add_edit_renewal_dialog.dart';
 
 class RenewalsScreen extends StatefulWidget {
@@ -170,6 +172,11 @@ class _RenewalsScreenState extends State<RenewalsScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.mic_rounded, color: AppColors.primary),
+            tooltip: 'Voice Add Renewal (Hinglish/English)',
+            onPressed: () => VoiceAssistantSheet.show(context, preferredType: VoiceActionType.renewal),
+          ),
           if (provider.expiringSoonCount > 0)
             Container(
               margin: const EdgeInsets.only(right: 16),

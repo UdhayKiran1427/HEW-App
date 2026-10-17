@@ -8,6 +8,8 @@ import '../../core/utils/currency_formatter.dart';
 import '../../models/expense_model.dart';
 import 'quick_add_expense_sheet.dart';
 import 'expense_summary_screen.dart';
+import '../../widgets/voice_assistant_sheet.dart';
+import '../../core/utils/hinglish_voice_parser.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -86,6 +88,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
       appBar: AppBar(
         title: const Text('Expenses'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.mic_rounded, color: AppColors.primary),
+            tooltip: 'Voice Add Expense (Hinglish/English)',
+            onPressed: () => VoiceAssistantSheet.show(context, preferredType: VoiceActionType.expense),
+          ),
           IconButton(
             icon: const Icon(Icons.add_circle_outline_rounded),
             tooltip: 'Add Custom Category',

@@ -8,6 +8,8 @@ import '../../widgets/item_card.dart';
 import 'add_edit_item_dialog.dart';
 import 'move_item_dialog.dart';
 import 'item_detail_screen.dart';
+import '../../widgets/voice_assistant_sheet.dart';
+import '../../core/utils/hinglish_voice_parser.dart';
 
 class ItemsScreen extends StatefulWidget {
   const ItemsScreen({super.key});
@@ -138,6 +140,13 @@ class _ItemsScreenState extends State<ItemsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Where I Kept It'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.mic_rounded, color: AppColors.primary),
+            tooltip: 'Voice Add Item (Hinglish/English)',
+            onPressed: () => VoiceAssistantSheet.show(context, preferredType: VoiceActionType.whereKept),
+          ),
+        ],
       ),
       body: Column(
         children: [

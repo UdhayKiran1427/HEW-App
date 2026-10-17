@@ -7,6 +7,7 @@ import '../../models/habit_model.dart';
 import '../../widgets/habit_card.dart';
 import 'add_edit_habit_dialog.dart';
 import 'habit_detail_screen.dart';
+import '../../widgets/voice_assistant_sheet.dart';
 
 class HabitsScreen extends StatefulWidget {
   const HabitsScreen({super.key});
@@ -104,6 +105,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
             Text(todayFormatted, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.mic_rounded, color: AppColors.primary),
+            tooltip: 'Voice Assistant (Hinglish/English)',
+            onPressed: () => VoiceAssistantSheet.show(context),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () => habitProvider.fetchHabits(refresh: true),
