@@ -12,3 +12,4 @@ router.put('/:id', renewalController.updateRenewal);
 router.delete('/:id', renewalController.deleteRenewal);
 
 module.exports = router;
+

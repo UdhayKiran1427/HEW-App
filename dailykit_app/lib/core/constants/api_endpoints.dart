@@ -1,6 +1,3 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-
 class ApiEndpoints {
   // Live 24/7 Cloud API URL hosted on Render
   static const String liveCloudUrl = 'https://hew-app.onrender.com/api';
@@ -32,5 +29,9 @@ class ApiEndpoints {
   static const String items = '/items';
   static String itemDetails(int id) => '/items/$id';
   static String moveItem(int id) => '/items/$id/move';
+
+  // Renewals & Warranties (Recharges, Subscriptions, Warranties)
+  static const String renewals = '/renewals';
+  static String renewalItem(int id) => '/renewals/$id';
 }
 

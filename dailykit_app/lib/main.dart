@@ -7,6 +7,7 @@ import 'providers/settings_provider.dart';
 import 'providers/habit_provider.dart';
 import 'providers/expense_provider.dart';
 import 'providers/item_provider.dart';
+import 'providers/renewal_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/root_navigation_screen.dart';
 
@@ -24,6 +25,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HabitProvider()),
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
         ChangeNotifierProvider(create: (_) => ItemProvider()),
+        ChangeNotifierProvider(create: (_) => RenewalProvider()),
       ],
       child: const DailyKitApp(),
     ),

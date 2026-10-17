@@ -4,6 +4,7 @@ import '../../core/network/offline_sync_queue.dart';
 
 import '../habits/habits_screen.dart';
 import '../expenses/expenses_screen.dart';
+import '../renewals/renewals_screen.dart';
 import '../items/items_screen.dart';
 import '../settings/settings_screen.dart';
 
@@ -21,6 +22,7 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   final List<Widget> _screens = const [
     HabitsScreen(),
     ExpensesScreen(),
+    RenewalsScreen(),
     ItemsScreen(),
     SettingsScreen(),
   ];
@@ -99,6 +101,11 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
             icon: Icon(Icons.account_balance_wallet_outlined),
             selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary),
             label: 'Expenses',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.event_repeat_outlined),
+            selectedIcon: Icon(Icons.event_repeat_rounded, color: AppColors.primary),
+            label: 'Renewals',
           ),
           NavigationDestination(
             icon: Icon(Icons.inventory_2_outlined),

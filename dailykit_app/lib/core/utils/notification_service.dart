@@ -31,8 +31,8 @@ class NotificationService {
   }) async {
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'dailykit_reminders',
-      'Habit Reminders',
-      channelDescription: 'Notifications for daily habit reminders',
+      'DailyKit Reminders & Alerts',
+      channelDescription: 'Notifications for habit reminders and expiry alerts',
       importance: Importance.max,
       priority: Priority.high,
     );
