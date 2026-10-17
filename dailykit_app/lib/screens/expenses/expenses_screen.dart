@@ -48,6 +48,36 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
     );
   }
 
+  void _confirmDelete(ExpenseModel expense) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Expense?'),
+        content: Text('Are you sure you want to delete this ${expense.categoryName} expense of ₹${expense.amount.toStringAsFixed(0)}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<ExpenseProvider>().deleteExpense(expense);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Expense deleted successfully')),
+              );
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openAddCategoryDialog() {
     final nameCtrl = TextEditingController();
     showDialog(
@@ -258,13 +288,52 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
                       subtitle: expense.note != null && expense.note!.isNotEmpty
                           ? Text(expense.note!, style: const TextStyle(fontSize: 12))
                           : null,
-                      trailing: Text(
-                        CurrencyFormatter.format(expense.amount, currency: currency),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.error,
-                        ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            CurrencyFormatter.format(expense.amount, currency: currency),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.error,
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onSelected: (val) {
+                              if (val == 'edit') {
+                                _openQuickAdd(expense: expense);
+                              } else if (val == 'delete') {
+                                _confirmDelete(expense);
+                              }
+                            },
+                            itemBuilder: (ctx) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Edit'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                                    SizedBox(width: 8),
+                                    Text('Delete', style: TextStyle(color: AppColors.error)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),

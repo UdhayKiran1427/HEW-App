@@ -108,6 +108,39 @@ class _QuickAddExpenseSheetState extends State<QuickAddExpenseSheet> {
     }
   }
 
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Expense?'),
+        content: Text('Are you sure you want to delete this expense of ₹${_amountController.text}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (widget.expenseToEdit != null) {
+                context.read<ExpenseProvider>().deleteExpense(widget.expenseToEdit!);
+              }
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Expense deleted successfully')),
+              );
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ExpenseProvider>();
@@ -138,11 +171,21 @@ class _QuickAddExpenseSheetState extends State<QuickAddExpenseSheet> {
                 widget.expenseToEdit != null ? 'Edit Expense' : 'Quick Add Expense',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              // Date Button
-              TextButton.icon(
-                onPressed: _pickDate,
-                icon: const Icon(Icons.calendar_today, size: 16),
-                label: Text(DateFormat('MMM d').format(_selectedDate)),
+              Row(
+                children: [
+                  if (widget.expenseToEdit != null)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                      tooltip: 'Delete Expense',
+                      onPressed: _confirmDelete,
+                    ),
+                  // Date Button
+                  TextButton.icon(
+                    onPressed: _pickDate,
+                    icon: const Icon(Icons.calendar_today, size: 16),
+                    label: Text(DateFormat('MMM d').format(_selectedDate)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -223,19 +266,51 @@ class _QuickAddExpenseSheetState extends State<QuickAddExpenseSheet> {
           ),
           const SizedBox(height: 20),
 
-          // Save Expense Button (<5s submission)
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          // Action Buttons
+          if (widget.expenseToEdit != null)
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _confirmDelete,
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                  label: const Text('Delete'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: _saveExpense,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text(
+                      'Update Expense',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _saveExpense,
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text(
+                'Save Expense',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
-            onPressed: _saveExpense,
-            icon: const Icon(Icons.check_circle_outline),
-            label: Text(
-              widget.expenseToEdit != null ? 'Update Expense' : 'Save Expense',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
         ],
       ),
     );
