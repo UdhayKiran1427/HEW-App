@@ -2,16 +2,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiEndpoints {
-  // Dynamically detect host: 10.0.2.2 for Android emulator, localhost for Web/Windows/iOS
+  // Live 24/7 Cloud API URL hosted on Render
+  static const String liveCloudUrl = 'https://hew-app.onrender.com/api';
+
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api';
-    }
-    if (Platform.isAndroid) {
-      // 192.168.1.68 allows your physical phone to connect directly to the backend
-      return 'http://192.168.1.68:3000/api';
-    }
-    return 'http://localhost:3000/api';
+    return liveCloudUrl;
   }
 
   // Auth
