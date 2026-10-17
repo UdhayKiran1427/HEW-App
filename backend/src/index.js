@@ -14,6 +14,7 @@ const authRoutes = require('./routes/authRoutes');
 const habitRoutes = require('./routes/habitRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const itemRoutes = require('./routes/itemRoutes');
+const renewalRoutes = require('./routes/renewalRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/habits', habitRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/items', itemRoutes);
+app.use('/api/renewals', renewalRoutes);
 
 // 404 Route Handler
 app.use('*', (req, res) => {

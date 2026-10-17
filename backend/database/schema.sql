@@ -111,3 +111,23 @@ CREATE TABLE IF NOT EXISTS item_location_history (
   INDEX idx_location_history_item (item_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 8. RENEWALS & WARRANTIES (Recharges, Subscriptions, Warranties, Insurance)
+CREATE TABLE IF NOT EXISTS renewals_warranties (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  category VARCHAR(50) NOT NULL DEFAULT 'Subscription',
+  purchase_date DATE NULL,
+  expiry_date DATE NOT NULL,
+  amount DECIMAL(10, 2) NULL,
+  notes TEXT NULL,
+  remind_before_days VARCHAR(50) DEFAULT '5,3,1',
+  is_renewed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_renewals_user (user_id),
+  INDEX idx_renewals_expiry (expiry_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
