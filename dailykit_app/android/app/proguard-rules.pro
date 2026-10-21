@@ -8,3 +8,8 @@
 -keep class com.google.mlkit.vision.text.** { *; }
 -keep class com.google_mlkit_text_recognition.** { *; }
 
+# Google Sign In & Drive APIs
+-keep class com.google.api.services.drive.** { *; }
+-keep class com.google.api.client.** { *; }
+-dontwarn com.google.api.client.**
+-dontwarn com.google.api.services.drive.**

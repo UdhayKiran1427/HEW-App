@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/backup_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/database/local_database_service.dart';
 
@@ -59,10 +60,160 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _handleDriveBackup() async {
+    final backup = context.read<BackupProvider>();
+    try {
+      final res = await backup.backupToDrive(context);
+      _loadDbSize();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Backup saved to Google Drive successfully! (${res['account'] ?? ''})'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showBackupAlternativeDialog(e.toString());
+    }
+  }
+
+  Future<void> _handleDriveRestore() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Restore from Google Drive?'),
+        content: const Text(
+          'This will restore your habits, expenses, items, and renewals from the latest Google Drive backup. Current local data will be updated.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Restore', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (!mounted) return;
+    final backup = context.read<BackupProvider>();
+    try {
+      final res = await backup.restoreFromDrive(context);
+      _loadDbSize();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Data restored from Google Drive! (${res['summary'] ?? ''})'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not restore from Drive: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleExportShare() async {
+    final backup = context.read<BackupProvider>();
+    try {
+      await backup.exportAndShare();
+      _loadDbSize();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleFileRestore() async {
+    final backup = context.read<BackupProvider>();
+    try {
+      final res = await backup.restoreFromFile(context);
+      _loadDbSize();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully restored from ${res['fileName']}!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      if (e.toString().contains('No file selected')) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Restore error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showBackupAlternativeDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.cloud_upload_rounded, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Google Drive Backup'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Direct Google Drive API sign-in requires Google Play OAuth credentials.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Would you like to save your backup directly to Google Drive via Android Share?',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'This opens the native Google Drive uploader instantly with 0 setup needed.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            icon: const Icon(Icons.share_rounded, size: 18, color: Colors.white),
+            label: const Text('Save to Google Drive', style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleExportShare();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final settings = context.watch<SettingsProvider>();
+    final backup = context.watch<BackupProvider>();
     final user = auth.user;
 
     return Scaffold(
@@ -108,6 +259,124 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: const Icon(Icons.edit_outlined, size: 20),
                     onPressed: () => _openEditNameDialog(user?.name ?? 'User'),
                   ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Cloud Backup Section (Google Drive)
+          const Text('Cloud Backup & Restore', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey)),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withAlpha(30),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.cloud_sync_rounded, color: Colors.blue, size: 26),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Google Drive Cloud Backup',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              backup.lastBackupTimeStr != null
+                                  ? 'Last backup: ${backup.lastBackupTimeStr}'
+                                  : 'No cloud backup yet',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: backup.lastBackupTimeStr != null ? Colors.green : Colors.grey,
+                                fontWeight: backup.lastBackupTimeStr != null ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Safely backup your habits, expenses, where-kept items, and renewals to your personal Google Drive like WhatsApp.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Action Buttons
+                  if (backup.isBackingUp || backup.isRestoring)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.cloud_upload_rounded, size: 18),
+                            label: const Text('Back Up Now', style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: _handleDriveBackup,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: const BorderSide(color: AppColors.primary),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.cloud_download_rounded, size: 18),
+                            label: const Text('Restore', style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: _handleDriveRestore,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    const SizedBox(height: 6),
+                    // Alternative Share / Save to Drive & Pick File
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          icon: const Icon(Icons.share_rounded, size: 16),
+                          label: const Text('Save / Share File', style: TextStyle(fontSize: 12)),
+                          onPressed: _handleExportShare,
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.file_open_rounded, size: 16),
+                          label: const Text('Restore from File', style: TextStyle(fontSize: 12)),
+                          onPressed: _handleFileRestore,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

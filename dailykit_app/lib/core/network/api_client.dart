@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_endpoints.dart';
 
 class ApiClient {
@@ -7,7 +7,6 @@ class ApiClient {
   factory ApiClient() => _instance;
 
   late final Dio dio;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   static const String tokenKey = 'dailykit_jwt_token';
 
   ApiClient._internal() {
@@ -27,7 +26,8 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await _storage.read(key: tokenKey);
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString(tokenKey);
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -63,15 +63,17 @@ class ApiClient {
 
   // Token management
   Future<void> saveToken(String token) async {
-    await _storage.write(key: tokenKey, value: token);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(tokenKey, token);
   }
 
   Future<String?> getToken() async {
-    return await _storage.read(key: tokenKey);
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(tokenKey);
   }
 
   Future<void> deleteToken() async {
-    await _storage.delete(key: tokenKey);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(tokenKey);
   }
 }
-

@@ -773,5 +773,119 @@ class LocalDatabaseService {
     final d = dt.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
   }
+
+  // ---------------------------------------------------------------------------
+  // BACKUP & RESTORE
+  // ---------------------------------------------------------------------------
+  Future<String> getDatabaseFilePath() async {
+    final databasesPath = await getDatabasesPath();
+    return p.join(databasesPath, 'hew_local_storage.db');
+  }
+
+  Future<Map<String, dynamic>> exportFullBackup() async {
+    final db = await database;
+    final habits = await db.query('habits');
+    final habitLogs = await db.query('habit_logs');
+    final expenseCategories = await db.query('expense_categories');
+    final expenses = await db.query('expenses');
+    final items = await db.query('items');
+    final itemLocationHistory = await db.query('item_location_history');
+    final renewals = await db.query('renewals_warranties');
+    final userProfile = await db.query('user_profile');
+
+    return {
+      'app': 'HEW',
+      'version': 1,
+      'exported_at': DateTime.now().toIso8601String(),
+      'summary': {
+        'habits_count': habits.length,
+        'habit_logs_count': habitLogs.length,
+        'expenses_count': expenses.length,
+        'items_count': items.length,
+        'renewals_count': renewals.length,
+      },
+      'user_profile': userProfile,
+      'habits': habits,
+      'habit_logs': habitLogs,
+      'expense_categories': expenseCategories,
+      'expenses': expenses,
+      'items': items,
+      'item_location_history': itemLocationHistory,
+      'renewals_warranties': renewals,
+    };
+  }
+
+  Future<void> importFullBackup(Map<String, dynamic> backup) async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      // 1. User Profile
+      if (backup['user_profile'] is List && (backup['user_profile'] as List).isNotEmpty) {
+        await txn.delete('user_profile');
+        for (final row in (backup['user_profile'] as List)) {
+          final map = Map<String, dynamic>.from(row as Map);
+          await txn.insert('user_profile', map);
+        }
+      }
+
+      // 2. Habits & Logs
+      if (backup['habits'] is List) {
+        await txn.delete('habit_logs');
+        await txn.delete('habits');
+        for (final row in (backup['habits'] as List)) {
+          final map = Map<String, dynamic>.from(row as Map);
+          await txn.insert('habits', map);
+        }
+        if (backup['habit_logs'] is List) {
+          for (final row in (backup['habit_logs'] as List)) {
+            final map = Map<String, dynamic>.from(row as Map);
+            await txn.insert('habit_logs', map);
+          }
+        }
+      }
+
+      // 3. Expense Categories & Expenses
+      if (backup['expense_categories'] is List && (backup['expense_categories'] as List).isNotEmpty) {
+        await txn.delete('expenses');
+        await txn.delete('expense_categories');
+        for (final row in (backup['expense_categories'] as List)) {
+          final map = Map<String, dynamic>.from(row as Map);
+          await txn.insert('expense_categories', map);
+        }
+      }
+      if (backup['expenses'] is List) {
+        await txn.delete('expenses');
+        for (final row in (backup['expenses'] as List)) {
+          final map = Map<String, dynamic>.from(row as Map);
+          await txn.insert('expenses', map);
+        }
+      }
+
+      // 4. Items & History
+      if (backup['items'] is List) {
+        await txn.delete('item_location_history');
+        await txn.delete('items');
+        for (final row in (backup['items'] as List)) {
+          final map = Map<String, dynamic>.from(row as Map);
+          await txn.insert('items', map);
+        }
+        if (backup['item_location_history'] is List) {
+          for (final row in (backup['item_location_history'] as List)) {
+            final map = Map<String, dynamic>.from(row as Map);
+            await txn.insert('item_location_history', map);
+          }
+        }
+      }
+
+      // 5. Renewals & Warranties
+      if (backup['renewals_warranties'] is List) {
+        await txn.delete('renewals_warranties');
+        for (final row in (backup['renewals_warranties'] as List)) {
+          final map = Map<String, dynamic>.from(row as Map);
+          await txn.insert('renewals_warranties', map);
+        }
+      }
+    });
+  }
 }
 
