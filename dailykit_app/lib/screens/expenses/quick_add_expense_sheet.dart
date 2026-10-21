@@ -6,6 +6,7 @@ import '../../providers/settings_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../models/expense_model.dart';
+import 'scan_receipt_sheet.dart';
 
 class QuickAddExpenseSheet extends StatefulWidget {
   final ExpenseModel? expenseToEdit;
@@ -178,6 +179,15 @@ class _QuickAddExpenseSheetState extends State<QuickAddExpenseSheet> {
                       icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
                       tooltip: 'Delete Expense',
                       onPressed: _confirmDelete,
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.document_scanner_rounded, color: Colors.purple),
+                      tooltip: 'Scan Receipt with AI',
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScanReceiptSheet.show(context);
+                      },
                     ),
                   // Date Button
                   TextButton.icon(

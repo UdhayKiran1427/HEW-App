@@ -8,6 +8,7 @@ import '../../core/utils/currency_formatter.dart';
 import '../../models/expense_model.dart';
 import 'quick_add_expense_sheet.dart';
 import 'expense_summary_screen.dart';
+import 'scan_receipt_sheet.dart';
 import '../../widgets/voice_assistant_sheet.dart';
 import '../../core/utils/hinglish_voice_parser.dart';
 
@@ -119,6 +120,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
         title: const Text('Expenses'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.document_scanner_rounded, color: Colors.purple),
+            tooltip: 'AI Bill/Receipt Scanner',
+            onPressed: () => ScanReceiptSheet.show(context),
+          ),
+          IconButton(
             icon: const Icon(Icons.mic_rounded, color: AppColors.primary),
             tooltip: 'Voice Add Expense (Hinglish/English)',
             onPressed: () => VoiceAssistantSheet.show(context, preferredType: VoiceActionType.expense),
@@ -146,10 +152,26 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
           const ExpenseSummaryScreen(),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openQuickAdd(),
-        icon: const Icon(Icons.bolt_rounded),
-        label: const Text('Quick Add'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'scan_receipt_fab',
+            onPressed: () => ScanReceiptSheet.show(context),
+            backgroundColor: Colors.purple,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.document_scanner_rounded),
+            label: const Text('Scan Bill / Receipt'),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'quick_add_fab',
+            onPressed: () => _openQuickAdd(),
+            icon: const Icon(Icons.bolt_rounded),
+            label: const Text('Quick Add'),
+          ),
+        ],
       ),
     );
   }
