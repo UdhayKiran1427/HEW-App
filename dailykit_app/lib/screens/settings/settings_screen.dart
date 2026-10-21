@@ -3,10 +3,61 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/network/offline_sync_queue.dart';
+import '../../core/database/local_database_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _dbSize = 'Calculating...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDbSize();
+  }
+
+  Future<void> _loadDbSize() async {
+    final size = await LocalDatabaseService().getDatabaseSize();
+    if (mounted) {
+      setState(() {
+        _dbSize = size;
+      });
+    }
+  }
+
+  void _openEditNameDialog(String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Profile Name'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Your Name',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                context.read<AuthProvider>().updateName(controller.text.trim());
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +81,7 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: AppColors.primary.withOpacity(0.15),
+                    backgroundColor: AppColors.primary.withAlpha(40),
                     child: Text(
                       user != null && user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary),
@@ -46,15 +97,62 @@ class SettingsScreen extends StatelessWidget {
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          user?.email ?? '',
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                        const Text(
+                          'Phone Local Account • 100% Private',
+                          style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    onPressed: () => _openEditNameDialog(user?.name ?? 'User'),
+                  ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Database Storage Section (Phone Storage)
+          const Text('Database & Storage', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey)),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.phone_android_rounded, color: AppColors.primary),
+                  title: const Text('Database Engine'),
+                  subtitle: const Text('Phone Internal Storage (SQLite)'),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withAlpha(30),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      '● Active Local',
+                      style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.sd_storage_rounded, color: AppColors.secondary),
+                  title: const Text('Local Database Size'),
+                  subtitle: Text('$_dbSize on phone storage'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    onPressed: _loadDbSize,
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.offline_bolt_rounded, color: Colors.orange),
+                  title: const Text('Offline Status'),
+                  subtitle: const Text('Works 100% offline with 0s latency & zero servers'),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -107,23 +205,6 @@ class SettingsScreen extends StatelessWidget {
                     },
                   ),
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.sync_rounded, color: AppColors.secondary),
-                  title: const Text('Sync Offline Data'),
-                  subtitle: const Text('Upload pending offline check-ins & expenses'),
-                  onTap: () async {
-                    final count = await OfflineSyncQueue.syncAll();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Offline sync finished. Synced $count items.'),
-                          backgroundColor: AppColors.success,
-                        ),
-                      );
-                    }
-                  },
-                ),
               ],
             ),
           ),
@@ -142,25 +223,13 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               title: const Text('HEW', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('Habits • Expenses • Where Kept • Renewals\nVersion 1.0.0'),
+              subtitle: const Text('Habits • Expenses • Where Kept • Renewals\nVersion 1.0.0 (Phone Storage SQLite)'),
               isThreeLine: true,
             ),
           ),
           const SizedBox(height: 24),
-
-          // Logout Button
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => auth.logout(),
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text('Sign Out'),
-          ),
         ],
       ),
     );
   }
 }
-

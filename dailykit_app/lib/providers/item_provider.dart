@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import '../core/network/api_client.dart';
-import '../core/constants/api_endpoints.dart';
+import '../core/database/local_database_service.dart';
 import '../models/item_model.dart';
 
 class ItemProvider extends ChangeNotifier {
-  final ApiClient _apiClient = ApiClient();
+  final LocalDatabaseService _localDb = LocalDatabaseService();
 
   List<ItemModel> _items = [];
   bool _isLoading = false;
@@ -19,7 +17,7 @@ class ItemProvider extends ChangeNotifier {
   String get currentSearchQuery => _currentSearchQuery;
   String? get selectedTag => _selectedTag;
 
-  // 1. Fetch Items with optional search & tag
+  // 1. Fetch Items with optional search & tag directly from SQLite
   Future<void> fetchItems({String? searchQuery, String? tag, bool refresh = false}) async {
     if (searchQuery != null) _currentSearchQuery = searchQuery;
     if (tag != null) _selectedTag = tag.isEmpty ? null : tag;
@@ -31,26 +29,12 @@ class ItemProvider extends ChangeNotifier {
     }
 
     try {
-      final Map<String, dynamic> params = {};
-      if (_currentSearchQuery.isNotEmpty) {
-        params['q'] = _currentSearchQuery;
-      }
-      if (_selectedTag != null && _selectedTag!.isNotEmpty) {
-        params['tag'] = _selectedTag;
-      }
-
-      final response = await _apiClient.dio.get(
-        ApiEndpoints.items,
-        queryParameters: params,
+      final list = await _localDb.getItems(
+        query: _currentSearchQuery,
+        tag: _selectedTag,
       );
-
-      if (response.data['success'] == true) {
-        final List list = response.data['data']['items'];
-        _items = list.map((item) => ItemModel.fromJson(item)).toList();
-        _errorMessage = null;
-      }
-    } on DioException catch (e) {
-      _errorMessage = e.message ?? 'Failed to load items.';
+      _items = list.map((item) => ItemModel.fromJson(item)).toList();
+      _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -59,18 +43,18 @@ class ItemProvider extends ChangeNotifier {
     }
   }
 
-  // 2. Fetch Single Item with complete Location History
+  // 2. Fetch Single Item with complete Location History from SQLite
   Future<ItemModel?> fetchItemDetails(int itemId) async {
     try {
-      final response = await _apiClient.dio.get(ApiEndpoints.itemDetails(itemId));
-      if (response.data['success'] == true) {
-        return ItemModel.fromJson(response.data['data']['item']);
+      final itemMap = await _localDb.getItemDetails(itemId);
+      if (itemMap != null) {
+        return ItemModel.fromJson(itemMap);
       }
     } catch (_) {}
     return null;
   }
 
-  // 3. Add Item
+  // 3. Add Item to SQLite
   Future<bool> addItem({
     required String name,
     required String currentLocation,
@@ -79,30 +63,24 @@ class ItemProvider extends ChangeNotifier {
     String? inUseBy,
   }) async {
     try {
-      final response = await _apiClient.dio.post(
-        ApiEndpoints.items,
-        data: {
-          'name': name.trim(),
-          'current_location': currentLocation.trim(),
-          'photo_url': photoUrl,
-          'tags': tags,
-          'in_use_by': inUseBy,
-        },
+      final createdMap = await _localDb.createItem(
+        name: name,
+        currentLocation: currentLocation,
+        photoUrl: photoUrl,
+        tags: tags,
+        inUseBy: inUseBy,
       );
-
-      if (response.data['success'] == true) {
-        final created = ItemModel.fromJson(response.data['data']['item']);
-        _items.insert(0, created);
-        notifyListeners();
-        return true;
-      }
+      final created = ItemModel.fromJson(createdMap);
+      _items.insert(0, created);
+      notifyListeners();
+      return true;
     } catch (e) {
       _errorMessage = e.toString();
+      return false;
     }
-    return false;
   }
 
-  // 4. Update Item
+  // 4. Update Item in SQLite
   Future<bool> updateItem({
     required int itemId,
     required String name,
@@ -111,74 +89,68 @@ class ItemProvider extends ChangeNotifier {
     String? inUseBy,
   }) async {
     try {
-      final response = await _apiClient.dio.put(
-        ApiEndpoints.itemDetails(itemId),
-        data: {
-          'name': name.trim(),
-          'photo_url': photoUrl,
-          'tags': tags,
-          'in_use_by': inUseBy,
-        },
+      final currentItem = await _localDb.getItemDetails(itemId);
+      final currentLocation = currentItem?['current_location'] ?? 'General Storage';
+
+      final updatedMap = await _localDb.updateItem(
+        itemId: itemId,
+        name: name,
+        currentLocation: currentLocation,
+        tags: tags,
+        inUseBy: inUseBy,
       );
 
-      if (response.data['success'] == true) {
-        final updated = ItemModel.fromJson(response.data['data']['item']);
-        final idx = _items.indexWhere((i) => i.id == itemId);
-        if (idx != -1) {
-          _items[idx] = updated;
-          notifyListeners();
-        }
-        return true;
+      final updated = ItemModel.fromJson(updatedMap);
+      final idx = _items.indexWhere((i) => i.id == itemId);
+      if (idx != -1) {
+        _items[idx] = updated;
+        notifyListeners();
       }
-    } catch (_) {}
-    return false;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
-  // 5. Mark Item as "Moved"
+  // 5. Mark Item as "Moved" in SQLite (stores location history)
   Future<bool> moveItem({
     required int itemId,
     required String newLocation,
     String? notes,
   }) async {
     try {
-      final response = await _apiClient.dio.post(
-        ApiEndpoints.moveItem(itemId),
-        data: {
-          'new_location': newLocation.trim(),
-          'notes': notes,
-        },
+      final updatedMap = await _localDb.updateItemLocation(
+        itemId: itemId,
+        newLocation: newLocation,
       );
 
-      if (response.data['success'] == true) {
-        final updated = ItemModel.fromJson(response.data['data']['item']);
-        final idx = _items.indexWhere((i) => i.id == itemId);
-        if (idx != -1) {
-          _items[idx] = updated;
-          notifyListeners();
-        }
-        return true;
+      final updated = ItemModel.fromJson(updatedMap);
+      final idx = _items.indexWhere((i) => i.id == itemId);
+      if (idx != -1) {
+        _items[idx] = updated;
+        notifyListeners();
       }
-    } catch (_) {}
-    return false;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
-  // 6. Delete Item
+  // 6. Delete Item in SQLite
   Future<bool> deleteItem(int itemId) async {
     try {
-      final response = await _apiClient.dio.delete(ApiEndpoints.itemDetails(itemId));
-      if (response.data['success'] == true) {
-        _items.removeWhere((i) => i.id == itemId);
-        notifyListeners();
-        return true;
-      }
-    } catch (_) {}
-    return false;
+      await _localDb.deleteItem(itemId);
+      _items.removeWhere((i) => i.id == itemId);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // Filter tags helper
   void setTagFilter(String? tag) {
     _selectedTag = tag;
-    fetchItems();
+    fetchItems(refresh: true);
   }
 }
-

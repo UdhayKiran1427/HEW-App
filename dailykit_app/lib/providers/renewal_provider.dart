@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import '../core/network/api_client.dart';
-import '../core/constants/api_endpoints.dart';
+import '../core/database/local_database_service.dart';
 import '../core/utils/notification_service.dart';
 import '../models/renewal_model.dart';
 
 class RenewalProvider extends ChangeNotifier {
-  final ApiClient _apiClient = ApiClient();
+  final LocalDatabaseService _localDb = LocalDatabaseService();
 
   List<RenewalModel> _renewals = [];
   bool _isLoading = false;
@@ -23,7 +21,7 @@ class RenewalProvider extends ChangeNotifier {
   int get expiringSoonCount =>
       _renewals.where((r) => r.status == 'expiring_soon' && !r.isRenewed).length;
 
-  // 1. Fetch Renewals
+  // 1. Fetch Renewals directly from SQLite
   Future<void> fetchRenewals({bool refresh = false}) async {
     if (_renewals.isEmpty || refresh) {
       _isLoading = true;
@@ -32,29 +30,15 @@ class RenewalProvider extends ChangeNotifier {
     }
 
     try {
-      final Map<String, dynamic> params = {};
-      if (_selectedCategoryFilter != 'All') {
-        params['category'] = _selectedCategoryFilter;
-      }
-      if (_selectedStatusFilter != 'All') {
-        params['status'] = _selectedStatusFilter.toLowerCase().replaceAll(' ', '_');
-      }
-
-      final response = await _apiClient.dio.get(
-        ApiEndpoints.renewals,
-        queryParameters: params,
+      final list = await _localDb.getRenewals(
+        category: _selectedCategoryFilter,
+        status: _selectedStatusFilter,
       );
+      _renewals = list.map((item) => RenewalModel.fromJson(item)).toList();
+      _errorMessage = null;
 
-      if (response.data['success'] == true) {
-        final List list = response.data['data']['renewals'];
-        _renewals = list.map((item) => RenewalModel.fromJson(item)).toList();
-        _errorMessage = null;
-
-        // Check for 5, 3, 1 day notifications
-        _checkAndTriggerNotifications();
-      }
-    } on DioException catch (e) {
-      _errorMessage = e.message ?? 'Failed to load renewals.';
+      // Check for 5, 3, 1 day notifications
+      _checkAndTriggerNotifications();
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -63,7 +47,7 @@ class RenewalProvider extends ChangeNotifier {
     }
   }
 
-  // 2. Add Renewal / Warranty
+  // 2. Add Renewal / Warranty to SQLite
   Future<bool> addRenewal({
     required String title,
     required String category,
@@ -74,43 +58,38 @@ class RenewalProvider extends ChangeNotifier {
     String remindBeforeDays = '5,3,1',
   }) async {
     try {
-      final response = await _apiClient.dio.post(
-        ApiEndpoints.renewals,
-        data: {
-          'title': title.trim(),
-          'category': category,
-          'purchase_date': purchaseDate,
-          'expiry_date': expiryDate,
-          'amount': amount,
-          'notes': notes,
-          'remind_before_days': remindBeforeDays,
-        },
+      final createdMap = await _localDb.createRenewal(
+        title: title,
+        category: category,
+        purchaseDate: purchaseDate,
+        expiryDate: expiryDate,
+        amount: amount,
+        notes: notes,
+        remindBeforeDays: remindBeforeDays,
       );
 
-      if (response.data['success'] == true) {
-        final created = RenewalModel.fromJson(response.data['data']['renewal']);
-        _renewals.insert(0, created);
-        _renewals.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
+      final created = RenewalModel.fromJson(createdMap);
+      _renewals.insert(0, created);
+      _renewals.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
 
-        // Schedule instant alert if expiring soon
-        if (created.daysRemaining <= 5 && created.daysRemaining >= 0) {
-          NotificationService().showInstantNotification(
-            id: created.id,
-            title: '⚠️ Expiring Soon: ${created.title}',
-            body: '${created.category} will expire in ${created.daysRemaining} days on ${created.expiryDate}.',
-          );
-        }
-
-        notifyListeners();
-        return true;
+      // Schedule instant alert if expiring soon
+      if (created.daysRemaining <= 5 && created.daysRemaining >= 0) {
+        NotificationService().showInstantNotification(
+          id: created.id,
+          title: '⚠️ Expiring Soon: ${created.title}',
+          body: '${created.category} will expire in ${created.daysRemaining} days on ${created.expiryDate}.',
+        );
       }
+
+      notifyListeners();
+      return true;
     } catch (e) {
       _errorMessage = e.toString();
+      return false;
     }
-    return false;
   }
 
-  // 3. Update Renewal
+  // 3. Update Renewal in SQLite
   Future<bool> updateRenewal({
     required int id,
     required String title,
@@ -123,46 +102,42 @@ class RenewalProvider extends ChangeNotifier {
     bool? isRenewed,
   }) async {
     try {
-      final response = await _apiClient.dio.put(
-        ApiEndpoints.renewalItem(id),
-        data: {
-          'title': title.trim(),
-          'category': category,
-          'purchase_date': purchaseDate,
-          'expiry_date': expiryDate,
-          'amount': amount,
-          'notes': notes,
-          'remind_before_days': remindBeforeDays,
-          'is_renewed': isRenewed,
-        },
+      final updatedMap = await _localDb.updateRenewal(
+        id: id,
+        title: title,
+        category: category,
+        purchaseDate: purchaseDate,
+        expiryDate: expiryDate,
+        amount: amount,
+        notes: notes,
+        remindBeforeDays: remindBeforeDays,
+        isRenewed: isRenewed,
       );
 
-      if (response.data['success'] == true) {
-        final updated = RenewalModel.fromJson(response.data['data']['renewal']);
-        final idx = _renewals.indexWhere((r) => r.id == id);
-        if (idx != -1) {
-          _renewals[idx] = updated;
-          _renewals.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
-          notifyListeners();
-        }
-        return true;
+      final updated = RenewalModel.fromJson(updatedMap);
+      final idx = _renewals.indexWhere((r) => r.id == id);
+      if (idx != -1) {
+        _renewals[idx] = updated;
+        _renewals.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
+        notifyListeners();
       }
-    } catch (_) {}
-    return false;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
-  // 4. Delete Renewal
+  // 4. Delete Renewal in SQLite
   Future<bool> deleteRenewal(int id) async {
     try {
-      final response = await _apiClient.dio.delete(ApiEndpoints.renewalItem(id));
-      if (response.data['success'] == true) {
-        _renewals.removeWhere((r) => r.id == id);
-        NotificationService().cancelNotification(id);
-        notifyListeners();
-        return true;
-      }
-    } catch (_) {}
-    return false;
+      await _localDb.deleteRenewal(id);
+      _renewals.removeWhere((r) => r.id == id);
+      NotificationService().cancelNotification(id);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // Set Filters
@@ -187,7 +162,6 @@ class RenewalProvider extends ChangeNotifier {
           .whereType<int>()
           .toList();
 
-      // Check if current days remaining matches 5, 3, or 1
       if (alertDays.contains(item.daysRemaining) && item.daysRemaining >= 0) {
         String urgency = item.daysRemaining == 1 ? '🚨 FINAL REMINDER' : '⏰ Reminder';
         String dayText = item.daysRemaining == 0
@@ -203,4 +177,3 @@ class RenewalProvider extends ChangeNotifier {
     }
   }
 }
-

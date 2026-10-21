@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/notification_service.dart';
+import 'core/database/local_database_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/habit_provider.dart';
 import 'providers/expense_provider.dart';
 import 'providers/item_provider.dart';
 import 'providers/renewal_provider.dart';
-import 'screens/auth/login_screen.dart';
 import 'screens/home/root_navigation_screen.dart';
 
 void main() async {
@@ -16,6 +16,9 @@ void main() async {
   
   // Initialize local notifications service
   await NotificationService().init();
+
+  // Initialize Phone Storage (SQLite Database)
+  await LocalDatabaseService().database;
 
   runApp(
     MultiProvider(
@@ -38,7 +41,6 @@ class DailyKitApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settingsProvider = context.watch<SettingsProvider>();
-    final authProvider = context.watch<AuthProvider>();
 
     return MaterialApp(
       title: 'HEW',
@@ -46,23 +48,7 @@ class DailyKitApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: settingsProvider.themeMode,
-      home: _buildHome(authProvider),
+      home: const RootNavigationScreen(),
     );
-  }
-
-  Widget _buildHome(AuthProvider auth) {
-    if (auth.status == AuthStatus.initial || (auth.status == AuthStatus.loading && auth.user == null)) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    if (auth.isAuthenticated) {
-      return const RootNavigationScreen();
-    }
-
-    return const LoginScreen();
   }
 }
